@@ -43,6 +43,9 @@ CREATE TABLE IF NOT EXISTS responses (
 );
 
 CREATE INDEX IF NOT EXISTS responses_event_id_idx ON responses(event_id);
+
+-- 'times': a day x time-of-day grid; 'days': whole days only.
+ALTER TABLE events ADD COLUMN IF NOT EXISTS kind TEXT NOT NULL DEFAULT 'times';
 `;
 
 export async function migrate(retries = 30): Promise<void> {

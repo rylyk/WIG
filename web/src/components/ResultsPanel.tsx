@@ -2,8 +2,9 @@ import { CalendarCheck, Check, Minus, Sparkles, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { api, type EventData } from "../api";
 import { bestBlocks, tallySlots, type Block, type GridModel } from "../lib/grid";
-import { formatRange } from "../lib/time";
-import { GridFrame } from "./GridFrame";
+import { describeRange } from "../lib/time";
+import { GridFrame, type CellProps } from "./GridFrame";
+import { MonthGrid } from "./MonthGrid";
 import { useToast } from "./Toast";
 import { TimezoneSelect } from "./TimezoneSelect";
 
@@ -32,6 +33,8 @@ export function ResultsPanel({ event, model, tz, onTzChange, adminKey, myRespons
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
 
   const step = event.slotMinutes * 60_000;
+  const isDays = event.kind === "days";
+  const describe = (start: number, end: number, zone: string) => describeRange(event.kind, start, end, zone);
   const included = useMemo(
     () => event.responses.filter((r) => !excluded.has(r.id)),
     [event.responses, excluded],
@@ -81,6 +84,35 @@ export function ResultsPanel({ event, model, tz, onTzChange, adminKey, myRespons
     );
   }
 
+  const heatBodyProps = {
+    className: "heat",
+    onPointerMove: (e: { pointerType: string; clientX: number; clientY: number }) => {
+      if (e.pointerType === "mouse") setHoverSlot(slotAtPointer(e));
+    },
+    onPointerLeave: () => setHoverSlot(null),
+    onClick: (e: { clientX: number; clientY: number }) => {
+      const s = slotAtPointer(e);
+      setPinnedSlot((p) => (p === s ? null : s));
+    },
+  };
+
+  const heatCell = (slot: number): CellProps => {
+    const t = tally.get(slot)!;
+    const classes = ["heat-cell"];
+    if (t.score > 0) classes.push("filled");
+    if (t.score >= 0.6) classes.push("strong");
+    if (total > 0 && t.available.length === total) classes.push("all");
+    if (highlight && !highlight.has(slot)) classes.push("dim");
+    if (slot === activeSlot) classes.push("active");
+    if (event.final && slot >= event.final.start && slot < event.final.end) classes.push("final");
+    return {
+      "data-slot": slot,
+      className: classes.join(" "),
+      style: { ["--p" as string]: t.score.toFixed(3) },
+      "aria-label": `${t.available.length} of ${total} available`,
+    };
+  };
+
   const statusOf = (personId: string) => {
     if (!activeTally) return null;
     if (activeTally.available.includes(personId)) return "yes";
@@ -97,7 +129,7 @@ export function ResultsPanel({ event, model, tz, onTzChange, adminKey, myRespons
           </h2>
           <div className="best-list">
             {best.map((b, i) => {
-              const { day, time } = formatRange(b.start, b.end, tz);
+              const { day, time } = describe(b.start, b.end, tz);
               const isFocused = focusBlock?.start === b.start && focusBlock?.end === b.end;
               return (
                 <div
@@ -144,38 +176,21 @@ export function ResultsPanel({ event, model, tz, onTzChange, adminKey, myRespons
 
       <div className="results-layout">
         <div className="results-grid">
-          <GridFrame
-            model={model}
-            slotMinutes={event.slotMinutes}
-            toolbar={<TimezoneSelect value={tz} onChange={onTzChange} />}
-            bodyProps={{
-              className: "heat",
-              onPointerMove: (e) => {
-                if (e.pointerType === "mouse") setHoverSlot(slotAtPointer(e));
-              },
-              onPointerLeave: () => setHoverSlot(null),
-              onClick: (e) => {
-                const s = slotAtPointer(e);
-                setPinnedSlot((p) => (p === s ? null : s));
-              },
-            }}
-            renderCell={(slot) => {
-              if (slot === undefined) return {};
-              const t = tally.get(slot)!;
-              const classes = ["heat-cell"];
-              if (t.score > 0) classes.push("filled");
-              if (total > 0 && t.available.length === total) classes.push("all");
-              if (highlight && !highlight.has(slot)) classes.push("dim");
-              if (slot === activeSlot) classes.push("active");
-              if (event.final && slot >= event.final.start && slot < event.final.end) classes.push("final");
-              return {
-                "data-slot": slot,
-                className: classes.join(" "),
-                style: { ["--p" as string]: t.score.toFixed(3) },
-                "aria-label": `${t.available.length} of ${total} available`,
-              };
-            }}
-          />
+          {isDays ? (
+            <MonthGrid
+              dates={event.dates}
+              bodyProps={heatBodyProps}
+              renderDay={(slot) => ({ ...heatCell(slot), badge: `${tally.get(slot)?.available.length ?? 0}/${total}` })}
+            />
+          ) : (
+            <GridFrame
+              model={model}
+              slotMinutes={event.slotMinutes}
+              toolbar={<TimezoneSelect value={tz} onChange={onTzChange} />}
+              bodyProps={heatBodyProps}
+              renderCell={(slot) => (slot === undefined ? {} : heatCell(slot))}
+            />
+          )}
           <div className="legend" aria-hidden>
             <span>0/{total}</span>
             <span className="legend-bar" />
@@ -189,7 +204,7 @@ export function ResultsPanel({ event, model, tz, onTzChange, adminKey, myRespons
               <>
                 <div className="slot-detail-when">
                   {(() => {
-                    const { day, time } = formatRange(activeSlot, activeSlot + step, tz);
+                    const { day, time } = describe(activeSlot, activeSlot + step, tz);
                     return (
                       <>
                         <span className="best-day">{day}</span>
@@ -208,12 +223,12 @@ export function ResultsPanel({ event, model, tz, onTzChange, adminKey, myRespons
                     className="btn btn-secondary btn-sm"
                     onClick={() => void setFinal(pinnedSlot, pinnedSlot + step)}
                   >
-                    <CalendarCheck size={14} /> Choose this time
+                    <CalendarCheck size={14} /> {isDays ? "Choose this day" : "Choose this time"}
                   </button>
                 )}
               </>
             ) : (
-              <p className="muted small">Hover over or tap a time to see who's free. Hover a name to see their availability.</p>
+              <p className="muted small">{isDays ? "Hover over or tap a day to see who's free." : "Hover over or tap a time to see who's free."} Hover a name to see their availability.</p>
             )}
           </div>
 
@@ -269,7 +284,7 @@ export function ResultsPanel({ event, model, tz, onTzChange, adminKey, myRespons
         <div className="slot-sheet" role="dialog" aria-label="Selected time">
           {(() => {
             const t = tally.get(pinnedSlot)!;
-            const { day, time } = formatRange(pinnedSlot, pinnedSlot + step, tz);
+            const { day, time } = describe(pinnedSlot, pinnedSlot + step, tz);
             const names = (ids: string[]) =>
               ids.map((id) => event.responses.find((r) => r.id === id)?.name).filter(Boolean).join(", ");
             return (
@@ -294,7 +309,7 @@ export function ResultsPanel({ event, model, tz, onTzChange, adminKey, myRespons
                 )}
                 {adminKey && (
                   <button type="button" className="btn btn-secondary btn-sm" onClick={() => void setFinal(pinnedSlot, pinnedSlot + step)}>
-                    <CalendarCheck size={14} /> Choose this time
+                    <CalendarCheck size={14} /> {isDays ? "Choose this day" : "Choose this time"}
                   </button>
                 )}
               </>

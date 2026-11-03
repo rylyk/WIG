@@ -23,8 +23,11 @@ Stop with `docker compose down` (add `-v` to also delete the data).
 
 ## Features
 
-- **Create an event**: name, optional details, drag across a calendar to pick dates,
-  a time-of-day range, 15/30/60-minute slots, and a time zone.
+- **Create an event**: name, optional details, drag across a calendar to pick dates, then choose
+  - **Specific times**: a time-of-day range, 15/30/60-minute slots and a time zone, or
+  - **Whole days**: for "which days are you free?" questions. Participants mark days on a
+    month calendar and the results are a month-calendar heatmap. Consecutive good days are
+    grouped into ranges under *Best times*.
 - **Two links**: a participant link to share and a private organizer link (`/e/:id/admin#key`).
   The key stays in the URL fragment, so it never ends up in server logs.
 - **Paint availability**: click-and-drag rectangles over the grid, mark times as
@@ -33,7 +36,8 @@ Stop with `docker compose down` (add `-v` to also delete the data).
 - **Group results**: a heatmap of overlap, the top three "best times", and a participant
   list that shows who's free in the hovered/tapped slot. Hover a name to see their
   availability; click a name to leave them out of the results.
-- **Time zones**: slots are stored as UTC instants. Everyone sees the grid in their own
+- **Time zones**: time slots are stored as UTC instants (whole-day events are plain dates and
+  read the same everywhere). Everyone sees the grid in their own
   zone and can switch to any other.
 - **Organizer tools**: choose the final time (everyone sees it, with `.ics` and Google
   Calendar links), edit details, remove responses, delete the event.

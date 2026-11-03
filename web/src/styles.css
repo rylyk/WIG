@@ -1322,6 +1322,127 @@ main {
   border: 1px solid var(--border);
 }
 
+/* Month view (whole-day events) */
+
+.month-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+  gap: 28px 36px;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.month-title {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-bottom: 10px;
+}
+
+.month-weekdays,
+.month-days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.month-weekdays {
+  margin-bottom: 4px;
+}
+
+.month-weekdays span {
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+  padding: 2px 0;
+}
+
+.mday {
+  position: relative;
+  aspect-ratio: 1 / 0.92;
+  min-height: 40px;
+  border-radius: 10px;
+  padding: 6px 8px;
+  font-size: 13px;
+  font-weight: 550;
+  font-variant-numeric: tabular-nums;
+  transition: background-color 0.12s, color 0.12s, opacity 0.15s;
+}
+
+.mday.off {
+  color: var(--text-3);
+  opacity: 0.55;
+  font-weight: 450;
+}
+
+/* Zero specificity so heat-map and selection colors always win. */
+:where(.mday.in) {
+  background-color: var(--cell);
+}
+
+.mday-num {
+  line-height: 1;
+}
+
+.mday-badge {
+  position: absolute;
+  right: 7px;
+  bottom: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  opacity: 0.7;
+}
+
+.month-list.editable {
+  touch-action: none;
+}
+
+.month-list.editable .mday.in {
+  cursor: pointer;
+}
+
+.month-list.editable .mday.in:not(.on):not(.maybe):hover {
+  background-color: color-mix(in oklab, var(--avail) 22%, var(--cell));
+}
+
+.month-list.editable .mday.on {
+  background-color: var(--avail);
+  color: white;
+}
+
+.month-list.editable .mday.maybe {
+  background-color: var(--maybe);
+  color: #3b2a07;
+}
+
+.month-list .mday:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+}
+
+.month-list.heat .mday.strong {
+  color: white;
+}
+
+.month-list.heat .mday.active {
+  outline-offset: 2px;
+}
+
+.month-list.heat .mday.final {
+  background-image: none;
+  box-shadow: inset 0 0 0 2px var(--text);
+}
+
+@media (prefers-color-scheme: dark) {
+  .month-list.heat .mday.strong,
+  .month-list.editable .mday.on {
+    color: #06281b;
+  }
+}
+
 /* ------------------------------------------------------------------ */
 /* Results                                                             */
 /* ------------------------------------------------------------------ */

@@ -142,3 +142,33 @@ export function summarizeDates(dates: string[]): string {
   if (dates.length === 1) return formatDayKey(first, { weekday: "short", ...opts });
   return `${formatDayKey(first, opts)} – ${formatDayKey(last, opts)}`;
 }
+
+const DAY_MS = 86_400_000;
+
+/**
+ * Two-line label for a range of slots: a small line ("Tue, Nov 10" or "3 days")
+ * and a prominent line ("2:00 – 3:30 PM" or "Nov 10 – Nov 12").
+ * Whole-day events are always shown as calendar dates, independent of zone.
+ */
+export function describeRange(kind: "times" | "days", start: number, end: number, tz: string) {
+  if (kind === "times") return formatRange(start, end, tz);
+  const days = Math.max(1, Math.round((end - start) / DAY_MS));
+  const dateOpts: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" };
+  if (days === 1) {
+    return {
+      day: formatInstant(start, "UTC", { weekday: "long" }),
+      time: formatInstant(start, "UTC", dateOpts),
+    };
+  }
+  const last = end - DAY_MS;
+  return {
+    day: `${days} days · ${formatInstant(start, "UTC", { weekday: "short" })} – ${formatInstant(last, "UTC", { weekday: "short" })}`,
+    time: `${formatInstant(start, "UTC", dateOpts)} – ${formatInstant(last, "UTC", dateOpts)}`,
+  };
+}
+
+/** Epoch ms of a date key's UTC midnight (the slot id of a whole-day event). */
+export function daySlot(dateKey: string): number {
+  const [y, m, d] = dateKey.split("-").map(Number);
+  return Date.UTC(y, m - 1, d);
+}

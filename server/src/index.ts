@@ -3,7 +3,7 @@ import { DateTime } from "luxon";
 import { z } from "zod";
 import { migrate, pool } from "./db.js";
 import { hashSecret, randomId, secretMatches } from "./security.js";
-import { generateSlots, isValidZone } from "./slots.js";
+import { generateDaySlots, generateSlots, isValidZone } from "./slots.js";
 
 const MAX_DATES = 62;
 const MAX_SLOTS = 4000;
@@ -29,11 +29,16 @@ const route = (fn: Handler) => (req: Request, res: Response, next: NextFunction)
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Dates must be YYYY-MM-DD");
 
-const createEventSchema = z
+const baseEventSchema = {
+  title: z.string().trim().min(1, "Give your event a name").max(120),
+  description: z.string().trim().max(2000).default(""),
+  dates: z.array(isoDate).min(1, "Pick at least one date").max(MAX_DATES),
+};
+
+const timesEventSchema = z
   .object({
-    title: z.string().trim().min(1, "Give your event a name").max(120),
-    description: z.string().trim().max(2000).default(""),
-    dates: z.array(isoDate).min(1, "Pick at least one date").max(MAX_DATES),
+    ...baseEventSchema,
+    kind: z.literal("times"),
     startMinute: z.number().int().min(0).max(1440),
     endMinute: z.number().int().min(0).max(1440),
     slotMinutes: z.union([z.literal(15), z.literal(30), z.literal(60)]),
@@ -47,6 +52,8 @@ const createEventSchema = z
     message: "Time range is shorter than one slot",
     path: ["endMinute"],
   });
+
+const daysEventSchema = z.object({ ...baseEventSchema, kind: z.literal("days") });
 
 const updateEventSchema = z.object({
   title: z.string().trim().min(1).max(120).optional(),
@@ -74,6 +81,7 @@ function parse<T>(schema: z.ZodType<T, z.ZodTypeDef, unknown>, body: unknown): T
 
 interface EventRow {
   id: string;
+  kind: "times" | "days";
   admin_key_hash: string;
   title: string;
   description: string;
@@ -118,6 +126,7 @@ function cleanSlots(values: number[], valid: Set<number>): number[] {
 function serializeEvent(event: EventRow, responses: ResponseRow[]) {
   return {
     id: event.id,
+    kind: event.kind,
     title: event.title,
     description: event.description,
     timezone: event.timezone,
@@ -151,12 +160,21 @@ app.get("/api/health", route(async (_req, res) => {
 }));
 
 app.post("/api/events", route(async (req, res) => {
-  const body = parse(createEventSchema, req.body);
+  const raw = req.body && typeof req.body === "object" ? req.body : {};
+  const body =
+    raw.kind === "days"
+      ? parse(daysEventSchema, raw)
+      : parse(timesEventSchema, { ...raw, kind: "times" });
   const dates = [...new Set(body.dates)].sort();
   for (const d of dates) {
     if (!DateTime.fromISO(d).isValid) throw new HttpError(400, `Invalid date ${d}`);
   }
-  const slots = generateSlots({ ...body, dates });
+  const config =
+    body.kind === "times"
+      ? body
+      : { startMinute: 0, endMinute: 1440, slotMinutes: 1440, timezone: "UTC" };
+  const slots =
+    body.kind === "times" ? generateSlots({ ...body, dates }) : generateDaySlots(dates);
   if (slots.length === 0) throw new HttpError(400, "No time slots in that range");
   if (slots.length > MAX_SLOTS) {
     throw new HttpError(400, "That's too many time slots — try fewer dates or a larger slot size");
@@ -165,11 +183,11 @@ app.post("/api/events", route(async (req, res) => {
   const id = randomId(10);
   const adminKey = randomId(24);
   await pool.query(
-    `INSERT INTO events (id, admin_key_hash, title, description, timezone, dates,
+    `INSERT INTO events (id, admin_key_hash, kind, title, description, timezone, dates,
        start_minute, end_minute, slot_minutes, slots)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-    [id, hashSecret(adminKey), body.title, body.description, body.timezone, dates,
-      body.startMinute, body.endMinute, body.slotMinutes, slots],
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+    [id, hashSecret(adminKey), body.kind, body.title, body.description, config.timezone, dates,
+      config.startMinute, config.endMinute, config.slotMinutes, slots],
   );
   res.status(201).json({ id, adminKey });
 }));

@@ -1,10 +1,21 @@
 import { CalendarCheck, Download, X } from "lucide-react";
 import { api, type EventData } from "../api";
-import { formatRange } from "../lib/time";
+import { describeRange } from "../lib/time";
 import { useToast } from "./Toast";
 
 function icsStamp(ms: number) {
   return new Date(ms).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+}
+
+/** YYYYMMDD of an all-day slot (stored as the date's UTC midnight). */
+function dateStamp(ms: number) {
+  return new Date(ms).toISOString().slice(0, 10).replace(/-/g, "");
+}
+
+function icsTimes(event: EventData, start: number, end: number) {
+  return event.kind === "days"
+    ? [`DTSTART;VALUE=DATE:${dateStamp(start)}`, `DTEND;VALUE=DATE:${dateStamp(end)}`]
+    : [`DTSTART:${icsStamp(start)}`, `DTEND:${icsStamp(end)}`];
 }
 
 function icsEscape(s: string) {
@@ -21,8 +32,7 @@ function downloadIcs(event: EventData, start: number, end: number) {
     "BEGIN:VEVENT",
     `UID:${event.id}-${start}@wig`,
     `DTSTAMP:${icsStamp(Date.now())}`,
-    `DTSTART:${icsStamp(start)}`,
-    `DTEND:${icsStamp(end)}`,
+    ...icsTimes(event, start, end),
     `SUMMARY:${icsEscape(event.title)}`,
     `DESCRIPTION:${icsEscape([event.description, url].filter(Boolean).join("\n\n"))}`,
     `URL:${url}`,
@@ -43,7 +53,10 @@ function googleUrl(event: EventData, start: number, end: number) {
   const params = new URLSearchParams({
     action: "TEMPLATE",
     text: event.title,
-    dates: `${icsStamp(start)}/${icsStamp(end)}`,
+    dates:
+      event.kind === "days"
+        ? `${dateStamp(start)}/${dateStamp(end)}`
+        : `${icsStamp(start)}/${icsStamp(end)}`,
     details: [event.description, `${window.location.origin}/e/${event.id}`].filter(Boolean).join("\n\n"),
   });
   return `https://calendar.google.com/calendar/render?${params}`;
@@ -60,7 +73,7 @@ export function FinalBanner({ event, tz, adminKey, onChanged }: Props) {
   const toast = useToast();
   if (!event.final) return null;
   const { start, end } = event.final;
-  const { day, time } = formatRange(start, end, tz);
+  const { day, time } = describeRange(event.kind, start, end, tz);
 
   return (
     <div className="final-banner">

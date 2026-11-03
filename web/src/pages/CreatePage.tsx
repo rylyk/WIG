@@ -1,4 +1,4 @@
-import { ArrowRight, Clock, Loader2 } from "lucide-react";
+import { ArrowRight, CalendarDays, Clock, Loader2 } from "lucide-react";
 import { useMemo, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../api";
@@ -12,6 +12,7 @@ const SLOT_OPTIONS = [15, 30, 60] as const;
 
 export function CreatePage() {
   const navigate = useNavigate();
+  const [kind, setKind] = useState<"times" | "days">("times");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [dates, setDates] = useState<Set<string>>(new Set());
@@ -24,7 +25,8 @@ export function CreatePage() {
   const recent = useMemo(() => storage.getRecent(), []);
 
   const sortedDates = [...dates].sort();
-  const canSubmit = title.trim().length > 0 && dates.size > 0 && endMinute > startMinute;
+  const canSubmit =
+    title.trim().length > 0 && dates.size > 0 && (kind === "days" || endMinute > startMinute);
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -32,15 +34,12 @@ export function CreatePage() {
     setSubmitting(true);
     setError(null);
     try {
-      const { id, adminKey } = await api.createEvent({
-        title: title.trim(),
-        description: description.trim(),
-        dates: sortedDates,
-        startMinute,
-        endMinute,
-        slotMinutes,
-        timezone,
-      });
+      const base = { title: title.trim(), description: description.trim(), dates: sortedDates };
+      const { id, adminKey } = await api.createEvent(
+        kind === "days"
+          ? { ...base, kind }
+          : { ...base, kind, startMinute, endMinute, slotMinutes, timezone },
+      );
       storage.setAdminKey(id, adminKey);
       storage.rememberEvent({ id, title: title.trim(), admin: true });
       navigate(`/e/${id}/created`, { state: { adminKey } });
@@ -90,67 +89,98 @@ export function CreatePage() {
           </div>
 
           <div className="field">
-            <span className="label">Times of day</span>
-            <div className="time-range">
-              <div className="select-wrap">
-                <Clock size={15} aria-hidden />
-                <select
-                  aria-label="Earliest time"
-                  value={startMinute}
-                  onChange={(e) => {
-                    const v = Number(e.target.value);
-                    setStartMinute(v);
-                    if (endMinute <= v) setEndMinute(Math.min(1440, v + 60));
-                  }}
-                >
-                  {TIME_OPTIONS.slice(0, -1).map((m) => (
-                    <option key={m} value={m}>
-                      {formatMinutes(m)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <span className="muted">to</span>
-              <div className="select-wrap">
-                <Clock size={15} aria-hidden />
-                <select
-                  aria-label="Latest time"
-                  value={endMinute}
-                  onChange={(e) => setEndMinute(Number(e.target.value))}
-                >
-                  {TIME_OPTIONS.filter((m) => m > startMinute).map((m) => (
-                    <option key={m} value={m}>
-                      {m === 1440 ? "Midnight" : formatMinutes(m)}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            <span className="label">What are you scheduling?</span>
+            <div className="segmented" role="radiogroup" aria-label="Event type">
+              <button
+                type="button"
+                role="radio"
+                aria-checked={kind === "times"}
+                className={kind === "times" ? "active" : ""}
+                onClick={() => setKind("times")}
+              >
+                <Clock size={15} /> Specific times
+              </button>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={kind === "days"}
+                className={kind === "days" ? "active" : ""}
+                onClick={() => setKind("days")}
+              >
+                <CalendarDays size={15} /> Whole days
+              </button>
             </div>
+            {kind === "days" && (
+              <p className="hint">People mark which days they're free on a month calendar.</p>
+            )}
           </div>
 
-          <div className="field-row">
-            <div className="field">
-              <span className="label">Slot length</span>
-              <div className="segmented" role="radiogroup" aria-label="Slot length">
-                {SLOT_OPTIONS.map((s) => (
-                  <button
-                    key={s}
-                    type="button"
-                    role="radio"
-                    aria-checked={slotMinutes === s}
-                    className={slotMinutes === s ? "active" : ""}
-                    onClick={() => setSlotMinutes(s)}
-                  >
-                    {s === 60 ? "1 hr" : `${s} min`}
-                  </button>
-                ))}
+          {kind === "times" && (
+            <>
+              <div className="field">
+                <span className="label">Times of day</span>
+                <div className="time-range">
+                  <div className="select-wrap">
+                    <Clock size={15} aria-hidden />
+                    <select
+                      aria-label="Earliest time"
+                      value={startMinute}
+                      onChange={(e) => {
+                        const v = Number(e.target.value);
+                        setStartMinute(v);
+                        if (endMinute <= v) setEndMinute(Math.min(1440, v + 60));
+                      }}
+                    >
+                      {TIME_OPTIONS.slice(0, -1).map((m) => (
+                        <option key={m} value={m}>
+                          {formatMinutes(m)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <span className="muted">to</span>
+                  <div className="select-wrap">
+                    <Clock size={15} aria-hidden />
+                    <select
+                      aria-label="Latest time"
+                      value={endMinute}
+                      onChange={(e) => setEndMinute(Number(e.target.value))}
+                    >
+                      {TIME_OPTIONS.filter((m) => m > startMinute).map((m) => (
+                        <option key={m} value={m}>
+                          {m === 1440 ? "Midnight" : formatMinutes(m)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
               </div>
-            </div>
-            <div className="field">
-              <span className="label">Time zone</span>
-              <TimezoneSelect value={timezone} onChange={setTimezone} variant="field" />
-            </div>
-          </div>
+
+              <div className="field-row">
+                <div className="field">
+                  <span className="label">Slot length</span>
+                  <div className="segmented" role="radiogroup" aria-label="Slot length">
+                    {SLOT_OPTIONS.map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        role="radio"
+                        aria-checked={slotMinutes === s}
+                        className={slotMinutes === s ? "active" : ""}
+                        onClick={() => setSlotMinutes(s)}
+                      >
+                        {s === 60 ? "1 hr" : `${s} min`}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="field">
+                  <span className="label">Time zone</span>
+                  <TimezoneSelect value={timezone} onChange={setTimezone} variant="field" />
+                </div>
+              </div>
+            </>
+          )}
         </section>
 
         <section className="create-dates">

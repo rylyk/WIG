@@ -6,8 +6,11 @@ export interface ParticipantResponse {
   updatedAt: string;
 }
 
+export type EventKind = "times" | "days";
+
 export interface EventData {
   id: string;
+  kind: EventKind;
   title: string;
   description: string;
   timezone: string;
@@ -21,15 +24,21 @@ export interface EventData {
   responses: ParticipantResponse[];
 }
 
-export interface CreateEventInput {
+interface CreateEventBase {
   title: string;
   description: string;
   dates: string[];
-  startMinute: number;
-  endMinute: number;
-  slotMinutes: 15 | 30 | 60;
-  timezone: string;
 }
+
+export type CreateEventInput =
+  | (CreateEventBase & {
+      kind: "times";
+      startMinute: number;
+      endMinute: number;
+      slotMinutes: 15 | 30 | 60;
+      timezone: string;
+    })
+  | (CreateEventBase & { kind: "days" });
 
 export interface ResponseInput {
   name: string;

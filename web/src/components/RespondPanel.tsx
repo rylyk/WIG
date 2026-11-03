@@ -4,6 +4,7 @@ import { api, type EventData, type ParticipantResponse } from "../api";
 import type { GridModel, Status } from "../lib/grid";
 import { storage, type StoredResponse } from "../lib/storage";
 import { AvailabilityGrid } from "./AvailabilityGrid";
+import { AvailabilityMonth } from "./AvailabilityMonth";
 import { useToast } from "./Toast";
 import { TimezoneSelect } from "./TimezoneSelect";
 
@@ -35,7 +36,9 @@ export function RespondPanel({ event, model, tz, onTzChange, myResponse, stored,
 
   const availableCount = [...value.values()].filter((v) => v === 2).length;
   const maybeCount = value.size - availableCount;
-  const hours = (n: number) => {
+  const isDays = event.kind === "days";
+  const amount = (n: number) => {
+    if (isDays) return `${n} day${n === 1 ? "" : "s"}`;
     const h = (n * event.slotMinutes) / 60;
     return `${Number.isInteger(h) ? h : h.toFixed(1)} hr${h === 1 ? "" : "s"}`;
   };
@@ -144,17 +147,23 @@ export function RespondPanel({ event, model, tz, onTzChange, myResponse, stored,
       </div>
 
       <p className="hint respond-hint">
-        Click and drag across the grid to mark when you're free. Drag over marked times to clear them.
+        {isDays
+          ? "Tap the days you're free, or drag across several at once. Tap a marked day again to clear it."
+          : "Click and drag across the grid to mark when you're free. Drag over marked times to clear them."}
       </p>
 
-      <AvailabilityGrid
-        model={model}
-        slotMinutes={event.slotMinutes}
-        value={value}
-        onChange={setValue}
-        paint={paint}
-        toolbar={<TimezoneSelect value={tz} onChange={onTzChange} />}
-      />
+      {isDays ? (
+        <AvailabilityMonth dates={event.dates} value={value} onChange={setValue} paint={paint} />
+      ) : (
+        <AvailabilityGrid
+          model={model}
+          slotMinutes={event.slotMinutes}
+          value={value}
+          onChange={setValue}
+          paint={paint}
+          toolbar={<TimezoneSelect value={tz} onChange={onTzChange} />}
+        />
+      )}
 
       <div className="save-bar">
         <div className="save-summary">
@@ -163,11 +172,11 @@ export function RespondPanel({ event, model, tz, onTzChange, myResponse, stored,
           ) : (
             <>
               <span>
-                <span className="dot avail" /> {hours(availableCount)} available
+                <span className="dot avail" /> {amount(availableCount)} available
               </span>
               {maybeCount > 0 && (
                 <span>
-                  <span className="dot maybe" /> {hours(maybeCount)} if needed
+                  <span className="dot maybe" /> {amount(maybeCount)} if needed
                 </span>
               )}
             </>

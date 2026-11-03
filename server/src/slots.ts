@@ -27,3 +27,12 @@ export function generateSlots(opts: {
   }
   return [...out].sort((a, b) => a - b);
 }
+
+/** One slot per date for whole-day events: the date's midnight in UTC. */
+export function generateDaySlots(dates: string[]): number[] {
+  return dates
+    .map((iso) => DateTime.fromISO(iso, { zone: "utc" }))
+    .filter((d) => d.isValid)
+    .map((d) => d.toMillis())
+    .sort((a, b) => a - b);
+}
