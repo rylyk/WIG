@@ -47,7 +47,9 @@ export const storage = {
     const list = this.getRecent().filter((e) => e.id !== event.id);
     const prev = this.getRecent().find((e) => e.id === event.id);
     list.unshift({ ...event, admin: event.admin || !!prev?.admin, at: Date.now() });
-    write("wig:recent", list.slice(0, 8));
+    // Never drop events you organize: losing the entry means losing the way back.
+    const visited = list.filter((e) => !e.admin).slice(0, 30);
+    write("wig:recent", list.filter((e) => e.admin || visited.includes(e)));
   },
   forgetEvent(eventId: string) {
     write("wig:recent", this.getRecent().filter((e) => e.id !== eventId));

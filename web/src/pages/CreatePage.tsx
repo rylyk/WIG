@@ -1,6 +1,6 @@
 import { ArrowRight, CalendarDays, Clock, Loader2 } from "lucide-react";
-import { useMemo, useState, type FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useState, type FormEvent } from "react";
+import { useNavigate } from "react-router-dom";
 import { api } from "../api";
 import { Calendar } from "../components/Calendar";
 import { TimezoneSelect } from "../components/TimezoneSelect";
@@ -22,8 +22,6 @@ export function CreatePage() {
   const [timezone, setTimezone] = useState(localTimeZone);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const recent = useMemo(() => storage.getRecent(), []);
-
   const sortedDates = [...dates].sort();
   const canSubmit =
     title.trim().length > 0 && dates.size > 0 && (kind === "days" || endMinute > startMinute);
@@ -214,22 +212,6 @@ export function CreatePage() {
         </footer>
       </form>
 
-      {recent.length > 0 && (
-        <section className="recent">
-          <h2 className="section-title">Recent events</h2>
-          <ul className="recent-list">
-            {recent.map((r) => (
-              <li key={r.id}>
-                <Link to={`/e/${r.id}`} className="recent-item">
-                  <span className="recent-title">{r.title}</span>
-                  {r.admin && <span className="badge">Organizer</span>}
-                  <ArrowRight size={16} className="muted" />
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
     </div>
   );
 }
