@@ -42,6 +42,8 @@ Stop with `docker compose down` (add `-v` to also delete the data).
 - **Organizer tools**: choose the final time (everyone sees it, with `.ics` and Google
   Calendar links), edit details, remove responses, delete the event.
 - Participants can come back and edit their own response from the same browser.
+- **My events** (`/events`): events you created and events you were invited to, so a lost
+  link isn't a lost event. Stored in the browser, so it doesn't follow you across devices.
 - Light and dark mode follow the system setting.
 
 ## Local development

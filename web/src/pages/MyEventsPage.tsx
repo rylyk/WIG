@@ -27,7 +27,7 @@ export function MyEventsPage() {
   const invited = recent.filter((e) => !e.admin);
 
   return (
-    <div className="page">
+    <div className="page narrow">
       <h1>My events</h1>
       <p className="muted">Events you created or opened in this browser.</p>
       {recent.length === 0 ? (
