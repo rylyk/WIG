@@ -26,7 +26,7 @@ export function App() {
         <Link to="/" className="brand">
           <Logo />
           <span>wig</span>
-          <span className="brand-sub">when is good?</span>
+          <span className="brand-sub">when is gooder?</span>
         </Link>
         {pathname !== "/" && (
           <Link to="/" className="btn btn-ghost btn-sm">

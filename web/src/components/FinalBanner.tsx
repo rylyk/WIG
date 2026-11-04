@@ -27,7 +27,7 @@ function downloadIcs(event: EventData, start: number, end: number) {
   const ics = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//WIG//When is good//EN",
+    "PRODID:-//WIG//When is gooder//EN",
     "CALSCALE:GREGORIAN",
     "BEGIN:VEVENT",
     `UID:${event.id}-${start}@wig`,
