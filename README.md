@@ -1,4 +1,4 @@
-# WIG — when is good?
+# WIG — when is gooder?
 
 A modern take on [whenisgood](https://whenisgood.net): pick some dates, share a link,
 and see when your group is free. No accounts.
