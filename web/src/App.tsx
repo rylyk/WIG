@@ -1,9 +1,10 @@
-import { Plus } from "lucide-react";
+import { CalendarDays, Plus } from "lucide-react";
 import { Link, Route, Routes, useLocation } from "react-router-dom";
 import { AdminEntry } from "./pages/AdminEntry";
 import { CreatePage } from "./pages/CreatePage";
 import { CreatedPage } from "./pages/CreatedPage";
 import { EventPage } from "./pages/EventPage";
+import { MyEventsPage } from "./pages/MyEventsPage";
 import { NotFound } from "./pages/NotFound";
 
 function Logo() {
@@ -28,15 +29,23 @@ export function App() {
           <span>wig</span>
           <span className="brand-sub">when is gooder?</span>
         </Link>
-        {pathname !== "/" && (
-          <Link to="/" className="btn btn-ghost btn-sm">
-            <Plus size={16} /> New event
-          </Link>
-        )}
+        <nav className="topbar-actions">
+          {pathname !== "/events" && (
+            <Link to="/events" className="btn btn-ghost btn-sm">
+              <CalendarDays size={16} /> My events
+            </Link>
+          )}
+          {pathname !== "/" && (
+            <Link to="/" className="btn btn-ghost btn-sm">
+              <Plus size={16} /> New event
+            </Link>
+          )}
+        </nav>
       </header>
       <main>
         <Routes>
           <Route path="/" element={<CreatePage />} />
+          <Route path="/events" element={<MyEventsPage />} />
           <Route path="/e/:id" element={<EventPage />} />
           <Route path="/e/:id/created" element={<CreatedPage />} />
           <Route path="/e/:id/admin" element={<AdminEntry />} />
